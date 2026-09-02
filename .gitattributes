@@ -1,0 +1,19 @@
+# 行尾规范：.sh/.py 必须保持 LF（板子/Docker/Linux 环境执行）
+# .ps1 保持 CRLF（Windows PowerShell）
+* text=auto
+
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.c    text eol=lf
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.go   text eol=lf
+*.rs   text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+Dockerfile* text eol=lf
+
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
