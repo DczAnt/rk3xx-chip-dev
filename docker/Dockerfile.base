@@ -1,0 +1,37 @@
+# Dockerfile.base — Base cross-compile toolchain for RK3XX.
+# Parameterized via BUILD_ARG: ARCH, GCC_PREFIX.
+# This stage only installs the toolchain; SDK and app build in later stages.
+#
+# Build:
+#   docker build -f Dockerfile.base -t rk-base:aarch64 \
+#     --build-arg ARCH=aarch64 --build-arg GCC_PREFIX=aarch64-linux-gnu .
+#   docker build -f Dockerfile.base -t rk-base:armhf \
+#     --build-arg ARCH=armhf --build-arg GCC_PREFIX=arm-linux-gnueabihf .
+
+FROM ubuntu:22.04
+
+ARG ARCH=aarch64
+ARG GCC_PREFIX=aarch64-linux-gnu
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ARCH=${ARCH}
+ENV GCC_PREFIX=${GCC_PREFIX}
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc-${GCC_PREFIX} \
+    g++-${GCC_PREFIX} \
+    cmake \
+    make \
+    python3 \
+    python3-yaml \
+    pkg-config \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symlinks so bare names (aarch64-linux-gnu-gcc) work
+RUN for t in gcc g++; do \
+      ln -sf /usr/bin/${GCC_PREFIX}-$t /usr/local/bin/${GCC_PREFIX}-$t; \
+    done
+
+WORKDIR /work

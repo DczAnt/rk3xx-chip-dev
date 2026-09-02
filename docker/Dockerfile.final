@@ -1,0 +1,36 @@
+# Dockerfile.final — Multi-stage: build in sdk stage, copy to minimal runtime.
+# Smallest possible deployable image.
+#
+# Build:
+#   docker build -f Dockerfile.final -t rk-app:rk3576 \
+#     --build-arg ARCH=aarch64 --build-arg GCC_PREFIX=aarch64-linux-gnu \
+#     --build-arg SDK_TARBALL=rk3576-sdk-aarch64.tar.gz \
+#     --build-arg APP_SRC=templates/cpp-mpp .
+
+ARG ARCH=aarch64
+ARG GCC_PREFIX=aarch64-linux-gnu
+ARG SDK_TARBALL
+
+# --- Build stage ---
+FROM rk-base:${ARCH} AS builder
+ARG SDK_TARBALL
+ARG APP_SRC
+
+ENV RK_SDK_PATH=/opt/rk-sdk
+COPY ${SDK_TARBALL} /tmp/sdk.tar.gz
+RUN mkdir -p ${RK_SDK_PATH} && tar -xzf /tmp/sdk.tar.gz -C ${RK_SDK_PATH} --strip-components=1 && rm /tmp/sdk.tar.gz
+
+COPY ${APP_SRC} /src
+WORKDIR /build
+RUN ${GCC_PREFIX}-g++ -O2 /src/main.cpp \
+    -I${RK_SDK_PATH}/include -L${RK_SDK_PATH}/lib/${ARCH} \
+    -lrockchip_mpp -lrockchip_mpp_v2 -lrga -lrknnrt \
+    -o /build/app
+
+# --- Runtime stage ---
+FROM ubuntu:22.04 AS runtime
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /build/app /usr/local/bin/app
+ENTRYPOINT ["/usr/local/bin/app"]

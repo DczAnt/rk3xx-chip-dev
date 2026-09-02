@@ -1,0 +1,46 @@
+# Build outputs
+build-out/
+*.o
+*.so
+*.a
+*.bin
+
+# SDK tarballs (license-restricted, do not commit)
+docker/*.tar.gz
+docker/*.tar.xz
+sdk/
+*.sdk
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+docker/.dockerignore
+
+# Local board config overrides (do not commit credentials)
+boards/local-registry.yaml
+.env
+.env.local
+
+# Symlinks created by AGENTS.md adapter (agent-specific, not part of skill)
+.cursorrules
+CLAUDE.md
+.clinerules
+.github/copilot-instructions.md
+.aider.conf.yml
+.continuerc.json

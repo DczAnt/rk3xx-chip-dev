@@ -1,0 +1,27 @@
+# Template: rust-musl
+# Goal: Rust static binary for RK boards. Use for memory-safe daemons,
+#       parsers, or services that don't need RK C libs (pure Rust).
+#       For RK lib access, use bindgen + cgo-like FFI (more complex).
+# Build: cross build --target aarch64-unknown-linux-musl --release
+#
+# Pitfalls:
+#  - musl static: no glibc dependency, works on ANY aarch64 Linux (uclibc too).
+#  - BUT: musl has NO NSS plugin support. If you need getpwnam_r etc, use
+#    glibc dynamic instead. See knowledge/cross-compile-glibc.md.
+#  - For RV1106 (uclibc), musl static binary works (no libc dep at all).
+#  - For RK lib FFI, add bindgen = "0.69" and write bindings to rknn_api.h.
+[package]
+name = "rk-daemon"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+# Add serde, tokio, etc as needed.
+# For RK FFI: bindgen = "0.69"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"  # smaller binary, no unwind

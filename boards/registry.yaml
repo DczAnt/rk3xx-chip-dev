@@ -1,0 +1,66 @@
+# RK3XX 板子注册表
+# 用户在此配置目标板子，或用 boards/probe.sh 自动探测后写入。
+# 多板子可同时注册，通过 --board <name> 选择当前目标。
+
+# 默认板子（未指定 --board 时使用）
+default: rk3568
+
+# 板子定义
+boards:
+  rk3566:
+    soc: RK3566
+    arch: aarch64
+    ip: 192.168.3.0          # 占位，用户填写
+    ssh_user: root
+    ssh_password: ""         # 或 ssh_key: ~/.ssh/id_rsa
+    compile_mode: cross      # cross | native
+    doc: boards/rk3566.md
+
+  rk3568:
+    soc: RK3568
+    arch: aarch64
+    ip: 192.168.3.0
+    ssh_user: root
+    ssh_password: ""
+    compile_mode: cross
+    doc: boards/rk3568.md
+
+  rk3576:
+    soc: RK3576
+    arch: aarch64
+    ip: 192.168.3.0
+    ssh_user: root
+    ssh_password: ""
+    compile_mode: native     # RK3576 板上 gcc 11.4 可原生编译
+    doc: boards/rk3576.md
+
+  rk3588:
+    soc: RK3588
+    arch: aarch64
+    ip: 192.168.3.0
+    ssh_user: root
+    ssh_password: ""
+    compile_mode: cross
+    doc: boards/rk3588.md
+
+  rv1106:
+    soc: RV1106
+    arch: armhf              # Cortex-A7 32位
+    ip: 192.168.3.0
+    ssh_user: root
+    ssh_password: ""
+    compile_mode: cross
+    doc: boards/rv1106.md
+
+# 摄像头（可选，RTSP 输入源）
+camera:
+  ip: 192.168.3.0
+  port: 554
+  user: admin
+  password: ""
+  rtsp_path: /stream1        # 通用：/stream1；海康：/Streaming/Channels/101
+
+# Docker 交叉编译环境
+docker:
+  image: rk3xx-cross:final   # 镜像名，可改
+  runtime: docker            # docker | podman

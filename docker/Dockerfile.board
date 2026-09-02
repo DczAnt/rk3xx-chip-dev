@@ -1,0 +1,26 @@
+# Dockerfile.board — Board-side runtime image (for on-device containers).
+# Thin image with just the app + runtime .so deps. NOT for cross-compiling.
+# Use this when you want to run the app in a container ON the RK board itself.
+#
+# Build (on board or via qemu):
+#   docker build -f Dockerfile.board -t rk-app:rk3576 \
+#     --build-arg APP_BINARY=build-out/cpp-mpp .
+
+FROM ubuntu:22.04
+
+ARG APP_BINARY
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime deps (RK BSP libs assumed already on board's host /usr/lib)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libstdc++6 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ${APP_BINARY} /usr/local/bin/app
+RUN chmod +x /usr/local/bin/app
+
+# Device access: /dev/dri (DRM), /dev/rknpu (NPU), /dev/dma_heap
+# These are passed via --device at runtime, not here.
+
+ENTRYPOINT ["/usr/local/bin/app"]
