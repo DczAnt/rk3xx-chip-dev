@@ -18,6 +18,7 @@
 #include <cstring>
 #include <unistd.h>
 #include "rk_mpi.h"
+#include "rk_vdec_cfg.h"
 #include "mpp_err.h"
 
 static MppCtx mpp_ctx = nullptr;
@@ -35,9 +36,16 @@ int main(int argc, char **argv)
     if (mpp_create(&mpp_ctx, &mpp_api) != MPP_OK) {
         fprintf(stderr, "mpp_create fail\n"); return 1;
     }
-    if (mpp_api->control(mpp_ctx, MPP_DEC_SET_PARSER_SPLIT_MODE, NULL) != MPP_OK) {
-        fprintf(stderr, "set split fail\n"); return 1;
+    /* 新 API: MPP_DEC_SET_CFG + split_parse
+     * 来源: mpp/inc/rk_vdec_cfg.h, rk_mpi_cmd.h:114
+     * 旧 API MPP_DEC_SET_PARSER_SPLIT_MODE 已废弃，见 SKILL.md 陷阱 #2 */
+    MppDecCfg dec_cfg = NULL;
+    mpp_dec_cfg_init(&dec_cfg);
+    mpp_dec_cfg_set_u32(dec_cfg, "base:split_parse", 1);
+    if (mpp_api->control(mpp_ctx, MPP_DEC_SET_CFG, dec_cfg) != MPP_OK) {
+        fprintf(stderr, "set split_parse fail\n"); return 1;
     }
+    mpp_dec_cfg_deinit(dec_cfg);
     if (mpp_init(mpp_ctx, MPP_CTX_DEC, type) != MPP_OK) {
         fprintf(stderr, "mpp_init fail\n"); return 1;
     }

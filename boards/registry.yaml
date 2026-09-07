@@ -16,6 +16,15 @@ boards:
     compile_mode: cross      # cross | native
     doc: boards/rk3566.md
 
+  rk3562:
+    soc: RK3562
+    arch: aarch64
+    ip: 192.168.3.0
+    ssh_user: root
+    ssh_password: ""
+    compile_mode: cross
+    doc: boards/rk3562.md
+
   rk3568:
     soc: RK3568
     arch: aarch64

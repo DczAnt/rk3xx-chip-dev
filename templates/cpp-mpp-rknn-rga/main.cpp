@@ -23,6 +23,7 @@
 #include <cstring>
 #include <unistd.h>
 #include "rk_mpi.h"
+#include "rk_vdec_cfg.h"
 #include "mpp_err.h"
 #include "im2d.h"
 #include "RgaUtils.h"
@@ -36,7 +37,12 @@ int main(int argc, char **argv)
     /* 1. MPP decode -> MppFrame */
     MppCtx dec; MppApi *api;
     mpp_create(&dec, &api);
-    api->control(dec, MPP_DEC_SET_PARSER_SPLIT_MODE, NULL);
+    /* 新 API split_parse，见 SKILL.md 陷阱 #2 */
+    MppDecCfg dec_cfg = NULL;
+    mpp_dec_cfg_init(&dec_cfg);
+    mpp_dec_cfg_set_u32(dec_cfg, "base:split_parse", 1);
+    api->control(dec, MPP_DEC_SET_CFG, dec_cfg);
+    mpp_dec_cfg_deinit(dec_cfg);
     mpp_init(dec, MPP_CTX_DEC, MPP_VIDEO_CodingAVC);
     /* ... decode loop, get MppFrame frame ... */
     MppFrame frame = nullptr;
@@ -53,9 +59,12 @@ int main(int argc, char **argv)
         NULL, dst_w, dst_h, RK_FORMAT_BGR_888);
     im_rect srect = {0, 0, src_w, src_h};
     im_rect drect = {0, 0, dst_w, dst_h};
-    /* COMBINED call: resize + colorspace in one improcess */
-    int r = imresize(src, dst, &srect, &drect, 0)
-          | imcvtcolor(src, dst, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888);
+    /* improcess: resize + colorspace 一步到位
+     * 来源: librga/include/im2d_single.h:502 (C++ 10 参数版)
+     * imresize 无 rect 参数，带区域 resize+cvtcolor 须用 improcess */
+    rga_buffer_t pat = {};
+    im_rect prect = {0, 0, 0, 0};
+    int r = improcess(src, dst, pat, srect, drect, prect, -1, NULL, NULL, IM_SYNC);
     if (r != IM_STATUS_SUCCESS) { fprintf(stderr, "rga fail=%d\n", r); }
 
     /* 3. RKNN infer */

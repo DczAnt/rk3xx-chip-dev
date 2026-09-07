@@ -9,6 +9,7 @@ description: >-
   ffmpeg-rockchip/交叉编译/aarch64/armhf/板子部署/SDK sysroot 时激活。
   通用技术（glibc 兼容、环形缓冲 IPC、Go 内存、systemd、安全加固、结构体对齐）见 knowledge/。
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+version: "2.0.0"
 ---
 
 # Rockchip RK3XX 芯片开发技能
@@ -31,12 +32,27 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 ---
 
+## 〇.5、版本锁定与官方库（校准 API 的真实来源）
+
+| 组件 | 推荐版本 | 来源 |
+|------|---------|------|
+| librga | **1.10.6** (2026-05-13) | `E:\librga\CHANGELOG.md` |
+| RGA 驱动 | ≥1.3.13（最低 1.2.4） | librga 1.10.6 要求 |
+| mpp | 按 BSP `CHANGELOG.md` | `E:\mpp` |
+| rknn-toolkit2 | 按 `CHANGELOG.md` | `E:\Prospace\RAG\RKProjects_lib\rknn-toolkit2-master` |
+
+> **生成/校准 API 调用时，先读真实头文件验证签名**（见 `references/official-libs.md`）。
+> 官方库本地路径与头文件映射见该文档。NPU 推理首选从 `references/rknn-model-zoo.md` 选现成模型。
+
+---
+
 ## 一、板子识别与选择
 
 ### 1.1 已注册板子
 
 | 板子名 | SoC | 架构 | NPU 核数 | RGA 实例 | VPU JPEG | 编译方式 | 能力文档 |
 |--------|-----|------|---------|---------|---------|---------|---------|
+| rk3562 | RK3562 | aarch64 | 1 | 1 | ✓ | cross | `boards/rk3562.md` |
 | rk3566 | RK3566 | aarch64 | 1 | 1 | ✗ | cross | `boards/rk3566.md` |
 | rk3568 | RK3568 | aarch64 | 1 | 1 | ✗ | cross | `boards/rk3568.md` |
 | rk3576 | RK3576 | aarch64 | **2** | **2** | ✓ | native/cross | `boards/rk3576.md` |
@@ -82,6 +98,8 @@ bash boards/probe.sh <ip> [user] [password]
 | DMA-BUF/零拷贝/importbuffer_fd/set_io_mem | 零拷贝管线 | `references/dma-buf-zero-copy.md` |
 | ffmpeg-rockchip/ffmpeg_rk/rkrga/scale_rkrga | ffmpeg 硬编解码 | `references/ffmpeg-rockchip.md` |
 | SDK/sysroot/头文件/库路径/链接策略 | 编译链接 | `references/sdk-sysroot.md` |
+| 官方库/源码路径/头文件映射/版本 | 查证真实 API | `references/official-libs.md` |
+| model zoo/yolov5/yolov8/RetinaFace/whisper/现成模型 | NPU 推理起点 | `references/rknn-model-zoo.md` |
 | 交叉编译/glibc/GLIBC_2.34/aarch64 | 编译环境 | `knowledge/cross-compile-glibc.md` |
 | 环形缓冲/ringbuf/mmap IPC | C/Go 进程通信 | `knowledge/ringbuf-mmap-ipc.md` |
 | Go 内存/GC/slice/异步 channel | Go 工程经验 | `knowledge/go-memory-gc.md` |
@@ -298,6 +316,8 @@ avcodec_open2(ctx, enc, NULL);
 | `references/dma-buf-zero-copy.md` | 全链路 DMA-BUF 零拷贝管线（ffmpeg C API → RGA → RKNN）、性能数据 |
 | `references/ffmpeg-rockchip.md` | ffmpeg-rk 硬编解码器、rkrga 滤镜、C API 硬解、命令行限制、编译部署 |
 | `references/sdk-sysroot.md` | SDK 头文件/库路径、交叉编译链接策略、CMake 工具链、glibc 兼容入口 |
+| `references/official-libs.md` | 6 个官方库本地路径索引、版本锁定、头文件映射（校准 API 的真实来源） |
+| `references/rknn-model-zoo.md` | 27 个现成 RKNN 模型（yolov5~v11/RetinaFace/whisper 等）+ 平台支持矩阵 + 使用流程 |
 
 ### 通用技术知识库（knowledge/）
 
@@ -353,3 +373,27 @@ avcodec_open2(ctx, enc, NULL);
 8. **通用技术查 `knowledge/`**：glibc 兼容、ringbuf、Go 内存、systemd、安全、结构体对齐等非 RK 专有问题。
 9. **验证编译结果**：`file demo` 应显示 `ELF 64-bit LSB executable, ARM aarch64`（或 armhf）；动态链接验证 `aarch64-linux-gnu-nm -D demo | grep GLIBC_2`。
 10. **板子路径用变量**：脚本中 `${BOARD_IP}`/`${BOARD_USER}` 从 `registry.yaml` 读取，不硬编码。
+
+---
+
+## 九、Git 版本管理
+
+本 skill 使用 git 管理版本控制：
+
+- **仓库**：`https://github.com/DczAnt/rk3xx-chip-dev`（私有）
+- **分支**：`master`，本地工作树 `E:\AIcomm\rk3xx_chip_dev\`
+- **行尾规范**：`.gitattributes` 强制 `.sh/.py` 使用 LF（板子可执行），`.ps1` 保持 CRLF
+- **忽略规则**：`.gitignore` 排除 SDK 压缩包、本地凭据（`local-registry.yaml`/`.env`）、构建产物
+- **提交规范**：Conventional Commits（`feat:`/`fix:`/`docs:` 前缀）
+
+### 维护流程
+
+```bash
+# 修改后提交
+git add -A && git commit -m "docs: 补充 xxx"
+
+# 推送到远程
+git push origin master
+
+# 更新 references 时，先读官方库真实头文件校准（见 references/official-libs.md）
+```

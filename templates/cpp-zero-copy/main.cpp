@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include "rk_mpi.h"
+#include "rk_vdec_cfg.h"
 #include "mpp_err.h"
 #include "im2d.h"
 #include "RgaUtils.h"
@@ -56,7 +57,12 @@ int main(int argc, char **argv)
     /* 2. MPP decode */
     MppCtx dec; MppApi *api;
     mpp_create(&dec, &api);
-    api->control(dec, MPP_DEC_SET_PARSER_SPLIT_MODE, NULL);
+    /* 新 API split_parse，见 SKILL.md 陷阱 #2 */
+    MppDecCfg dec_cfg = NULL;
+    mpp_dec_cfg_init(&dec_cfg);
+    mpp_dec_cfg_set_u32(dec_cfg, "base:split_parse", 1);
+    api->control(dec, MPP_DEC_SET_CFG, dec_cfg);
+    mpp_dec_cfg_deinit(dec_cfg);
     mpp_init(dec, MPP_CTX_DEC, MPP_VIDEO_CodingAVC);
 
     /* 3. Allocate RGA dst buffer ONCE (reused across frames) */
@@ -78,10 +84,14 @@ int main(int argc, char **argv)
         rga_buffer_handle_t src = wrapbuffer_handle(src_fd, src_w, src_h,
                                                     RK_FORMAT_YCbCr_420_SP,
                                                     src_stride);
-        /* 4b. RGA: resize + NV12->BGR in one call (zero-copy, fd->fd) */
-        int r = imresize(src, dst, NULL, NULL, 0)
-              | imcvtcolor(src, dst, RK_FORMAT_YCbCr_420_SP,
-                           RK_FORMAT_BGR_888);
+        /* 4b. RGA: resize + NV12->BGR via improcess (zero-copy, fd->fd)
+         * 来源: librga/include/im2d_single.h:502
+         * imresize 无 rect 参数，resize+cvtcolor 须用 improcess */
+        rga_buffer_t pat = {};
+        im_rect prect = {0, 0, 0, 0};
+        im_rect srect = {0, 0, src_w, src_h};
+        im_rect drect = {0, 0, dst_w, dst_h};
+        int r = improcess(src, dst, pat, srect, drect, prect, -1, NULL, NULL, IM_SYNC);
         if (r != IM_STATUS_SUCCESS) {
             fprintf(stderr, "rga fail=%d\n", r);
             mpp_frame_deinit(&frame);
