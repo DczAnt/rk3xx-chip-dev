@@ -83,3 +83,25 @@ grep "imresize" E:\librga\include\im2d_single.h
 # 例：验证 MPP_DEC_SET_CFG 存在
 grep "MPP_DEC_SET_CFG" E:\mpp\inc\rk_mpi_cmd.h
 ```
+
+## 本地路径缺失时的降级（重要）
+
+本地官方库路径**仅用于 skill 维护时的实时再校准**，**非运行依赖**：
+
+| 场景 | 是否需要本地库 | 说明 |
+|------|--------------|------|
+| agent 用 skill 写代码 | ✗ 不需要 | 依赖 `references/` 内联的已校准 API 信息（v2.0.0 已从真实头文件提取） |
+| 交叉编译 | ✗ 不需要 | SDK 在 Docker 镜像内或 `--sdk` 参数挂载，非本地源码路径 |
+| skill 升级/再校准 | ✓ 可选 | 路径存在时读真实头文件验证 API 变更；不存在时走降级 |
+
+**降级方案（路径不存在时）**：
+1. 依赖 `references/` 文档内联信息（已校准，自包含）
+2. 如需再校准，从 GitHub 在线拉取：
+   - mpp: `https://github.com/rockchip-linux/mpp`
+   - librga: `https://github.com/airockchip/librga`
+   - rknn-toolkit2: `https://github.com/airockchip/rknn-toolkit2`
+   - ffmpeg-rockchip: `https://github.com/airockchip/FFmpeg`
+   - rknn_model_zoo: `https://github.com/airockchip/rknn_model_zoo`
+3. 板端 SDK 提取：`ssh root@<board> "tar czf /tmp/sdk.tar.gz -h /usr/lib/librknn*.so /usr/lib/librockchip_mpp*.so /usr/include/rknn_api.h"` → scp 回本地
+
+> **结论**：本地库删除不影响 skill 正常使用，仅影响 skill 维护时的再校准便利性。
