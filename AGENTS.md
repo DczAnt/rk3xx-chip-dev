@@ -63,7 +63,7 @@ them (agent can still read docs and generate code), but these enable execution:
 
 | Tool           | Purpose                          | Required by              |
 |----------------|----------------------------------|--------------------------|
-| `python3`+`yaml`| `board_tool.py` board ops        | scripts/board_tool.py    |
+| `python3`+`yaml`| `board_tool.py` board ops + diagnose | scripts/board_tool.py    |
 | `sshpass`/`plink`| non-interactive SSH deploy      | scripts/deploy_run.sh    |
 | Docker         | cross-compile images             | docker/build.sh          |
 | `aarch64-linux-gnu-gcc` | cross compile C/C++      | scripts/build_templates.sh |

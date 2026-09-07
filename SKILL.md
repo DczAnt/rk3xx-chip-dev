@@ -133,6 +133,8 @@ bash boards/probe.sh <ip> [user] [password]
 > `boards/registry.yaml` 的 IP 为占位（`192.168.3.0`），用户须填写真实 IP。
 > **未配置板子时 skill 仍可用于编码 + 交叉编译**，仅部署/调试阶段需板子。
 > 用 `boards/probe.sh <ip>` 自动探测 SoC 型号 + 能力，探测结果填入 registry.yaml。
+> **板子可访问后运行 `python scripts/board_tool.py --board <name> --ip <ip> diagnose`**，
+> 主动诊断板端 SDK 库/工具缺失 + 本机开发环境 + 匹配验证 + 缺失影响评估。
 
 ### 3.1 编译方式选择（按板子能力）
 
@@ -357,7 +359,7 @@ avcodec_open2(ctx, enc, NULL);
 
 | 资源 | 说明 |
 |------|------|
-| `scripts/board_tool.py` | 调试工具（`--board` 参数选板子，sys/npu/mpp/rga/drm/cam/deploy 子命令） |
+| `scripts/board_tool.py` | 调试工具（probe/deploy/exec/reboot/**diagnose** 子命令）。`diagnose` 做环境诊断闭环：板端 SoC/SDK库/工具 + 本机编译器/Docker + 匹配 boards/ + 缺失影响矩阵 |
 | `scripts/build_templates.sh` | 一键构建全部模板（容器内执行） |
 | `scripts/deploy_run.sh` | 部署到板子并运行 |
 | `scripts/quick-build-deploy.sh` | 构建+部署+验证一体化 |
