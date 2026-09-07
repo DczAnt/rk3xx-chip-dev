@@ -31,6 +31,7 @@ boards:
     ip: 192.168.3.0
     ssh_user: root
     ssh_password: ""
+    ssh_key: ""             # ~/.ssh/id_rsa 免密登录，见 knowledge/ssh-keyless-setup.md
     compile_mode: cross
     doc: boards/rk3568.md
 

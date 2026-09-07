@@ -135,6 +135,10 @@ bash boards/probe.sh <ip> [user] [password]
 > 用 `boards/probe.sh <ip>` 自动探测 SoC 型号 + 能力，探测结果填入 registry.yaml。
 > **板子可访问后运行 `python scripts/board_tool.py --board <name> --ip <ip> diagnose`**，
 > 主动诊断板端 SDK 库/工具缺失 + 本机开发环境 + 匹配验证 + 缺失影响评估。
+>
+> **SSH 免密配置（调试前置）**：见 `knowledge/ssh-keyless-setup.md`。
+> 配置后在 `registry.yaml` 设 `ssh_key: ~/.ssh/id_rsa`，board_tool.py 优先用 key 免密。
+> `diagnose` 自动检测免密状态，未配置时输出指引。
 
 ### 3.1 编译方式选择（按板子能力）
 

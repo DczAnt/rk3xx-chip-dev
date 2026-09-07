@@ -7,12 +7,13 @@ All board-specific values come from boards/registry.yaml.
 
 Usage:
     python board_tool.py --board rk3576 --ip 192.168.1.100 probe
-    python board_tool.py --board rk3576 --ip 192.168.1.100 --user root deploy ./app
+    python board_tool.py --board rk3576 --ip 192.168.1.100 deploy ./app
     python board_tool.py --board rk3576 --ip 192.168.1.100 exec "cat /proc/cpuinfo"
     python board_tool.py --board rk3576 --ip 192.168.1.100 reboot
+    python board_tool.py --board rk3576 --ip 192.168.1.100 diagnose
 
-Requires: PyYAML, and sshpass (Linux) or plink (Windows) for non-interactive SSH.
-See AGENTS.md for multi-agent tool compatibility notes.
+SSH auth priority: ssh_key (免密) > sshpass/plink (密码) > default key.
+See knowledge/ssh-keyless-setup.md for免密配置.
 """
 import argparse
 import os
@@ -41,37 +42,39 @@ def get_board_info(registry: dict, board: str) -> dict:
     return boards[board]
 
 
-def ssh_cmd(ip: str, user: str, password: str, remote_cmd: str, port: int = 22) -> list:
-    """Build SSH command, auto-detecting sshpass (Linux) or plink (Windows)."""
-    if shutil.which("sshpass"):
-        return ["sshpass", "-p", password,
-                "ssh", "-o", "StrictHostKeyChecking=no", "-p", str(port),
-                f"{user}@{ip}", remote_cmd]
-    elif shutil.which("plink"):
-        return ["plink", "-batch", "-pw", password, "-P", str(port),
-                f"{user}@{ip}", remote_cmd]
-    else:
-        sys.exit("need sshpass (Linux) or plink (Windows) for non-interactive SSH")
+def ssh_cmd(ip, user, password, remote_cmd, port=22, key=None):
+    """Build SSH command. Prefer key auth, fall back to sshpass/plink, then default."""
+    opts = ["-o", "StrictHostKeyChecking=no", "-p", str(port)]
+    if key:
+        return ["ssh"] + opts + ["-i", key, f"{user}@{ip}", remote_cmd]
+    if password and shutil.which("sshpass"):
+        return ["sshpass", "-p", password, "ssh"] + opts + [f"{user}@{ip}", remote_cmd]
+    if password and shutil.which("plink"):
+        return ["plink", "-batch", "-pw", password, "-P", str(port), f"{user}@{ip}", remote_cmd]
+    return ["ssh"] + opts + [f"{user}@{ip}", remote_cmd]
 
 
-def scp_cmd(ip: str, user: str, password: str, local: str, remote: str,
-            port: int = 22) -> list:
-    if shutil.which("sshpass"):
-        return ["sshpass", "-p", password,
-                "scp", "-o", "StrictHostKeyChecking=no", "-P", str(port),
-                local, f"{user}@{ip}:{remote}"]
-    elif shutil.which("pscp"):
-        return ["pscp", "-batch", "-pw", password, "-P", str(port),
-                local, f"{user}@{ip}:{remote}"]
-    else:
-        sys.exit("need sshpass/pscp for non-interactive SCP")
+def scp_cmd(ip, user, password, local, remote, port=22, key=None):
+    opts = ["-o", "StrictHostKeyChecking=no", "-P", str(port)]
+    if key:
+        return ["scp"] + opts + ["-i", key, local, f"{user}@{ip}:{remote}"]
+    if password and shutil.which("sshpass"):
+        return ["sshpass", "-p", password, "scp"] + opts + [local, f"{user}@{ip}:{remote}"]
+    if password and shutil.which("pscp"):
+        return ["pscp", "-batch", "-pw", password, "-P", str(port), local, f"{user}@{ip}:{remote}"]
+    return ["scp"] + opts + [local, f"{user}@{ip}:{remote}"]
+
+
+def get_creds(args, board_info):
+    ip = args.ip
+    user = args.user
+    pw = args.password or board_info.get("ssh_password", "")
+    key = board_info.get("ssh_key", "") or None
+    return ip, user, pw, key
 
 
 def cmd_probe(args, board_info):
-    """Probe board: SSH in, read /proc/device-tree/compatible, check NPU/MPP."""
-    ip, user, pw = args.ip, args.user, args.password or board_info.get("password", "")
-    if not pw:
-        sys.exit("password required (--password or in registry.yaml)")
+    ip, user, pw, key = get_creds(args, board_info)
     cmds = [
         "cat /proc/device-tree/compatible",
         "cat /proc/cpuinfo | grep -c ^processor",
@@ -82,53 +85,50 @@ def cmd_probe(args, board_info):
     ]
     for c in cmds:
         print(f"$ {c}")
-        r = subprocess.run(ssh_cmd(ip, user, pw, c), capture_output=True, text=True)
+        r = subprocess.run(ssh_cmd(ip, user, pw, c, key=key), capture_output=True, text=True)
         print(r.stdout.strip() or r.stderr.strip())
     print(f"\nExpected SoC: {board_info.get('soc', 'unknown')}")
     print(f"Expected arch: {board_info.get('arch', 'unknown')}")
 
 
 def cmd_deploy(args, board_info):
-    """Deploy local binary to board."""
-    ip, user, pw = args.ip, args.user, args.password or board_info.get("password", "")
+    ip, user, pw, key = get_creds(args, board_info)
     local = args.local
     remote = args.remote or f"/tmp/{os.path.basename(local)}"
     print(f"deploying {local} -> {user}@{ip}:{remote}")
-    subprocess.run(scp_cmd(ip, user, pw, local, remote), check=True)
-    subprocess.run(ssh_cmd(ip, user, pw, f"chmod +x {remote}"), check=True)
+    subprocess.run(scp_cmd(ip, user, pw, local, remote, key=key), check=True)
+    subprocess.run(ssh_cmd(ip, user, pw, f"chmod +x {remote}", key=key), check=True)
     print(f"deployed. run: {user}@{ip} {remote}")
 
 
 def cmd_exec(args, board_info):
-    """Execute remote command."""
-    ip, user, pw = args.ip, args.user, args.password or board_info.get("password", "")
-    subprocess.run(ssh_cmd(ip, user, pw, args.remote_cmd))
+    ip, user, pw, key = get_creds(args, board_info)
+    subprocess.run(ssh_cmd(ip, user, pw, args.remote_cmd, key=key))
 
 
 def cmd_reboot(args, board_info):
-    """Reboot board."""
-    ip, user, pw = args.ip, args.user, args.password or board_info.get("password", "")
+    ip, user, pw, key = get_creds(args, board_info)
     if not args.yes:
         ans = input(f"reboot {user}@{ip}? [y/N] ")
         if ans.lower() != "y":
             return
-    subprocess.run(ssh_cmd(ip, user, pw, "reboot"))
+    subprocess.run(ssh_cmd(ip, user, pw, "reboot", key=key))
 
 
 def cmd_diagnose(args, board_info):
     """Full environment diagnosis: board + dev env + matching + missing impact."""
-    ip, user, pw = args.ip, args.user, args.password or board_info.get("password", "")
-    if not pw:
-        sys.exit("password required (--password or in registry.yaml)")
+    ip, user, pw, key = get_creds(args, board_info)
+    if not pw and not key:
+        print("[!] 无 password 也无 ssh_key，尝试默认免密（ssh-agent/默认 key）")
     expected_soc = board_info.get("soc", "unknown")
     expected_arch = board_info.get("arch", "unknown")
 
     def ssh_run(cmd):
-        r = subprocess.run(ssh_cmd(ip, user, pw, cmd), capture_output=True, text=True)
+        r = subprocess.run(ssh_cmd(ip, user, pw, cmd, key=key), capture_output=True, text=True)
         return (r.stdout or r.stderr).strip()
 
     def ssh_check(cmd):
-        return subprocess.run(ssh_cmd(ip, user, pw, cmd),
+        return subprocess.run(ssh_cmd(ip, user, pw, cmd, key=key),
                               capture_output=True).returncode == 0
 
     def mark(ok):
@@ -137,6 +137,19 @@ def cmd_diagnose(args, board_info):
     print("=" * 64)
     print(f"环境诊断: {args.board} (期望 {expected_soc}/{expected_arch}) @ {ip}")
     print("=" * 64)
+
+    # --- 0. SSH 免密检测 ---
+    print("\n[0] SSH 连接与免密")
+    keyless = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+         "-p", str(args.port), f"{user}@{ip}", "true"],
+        capture_output=True).returncode == 0
+    print(f"  SSH 免密登录          : {mark(keyless)}")
+    if not keyless:
+        print(f"    影响: 每次 SSH/SCP 需密码，脚本自动化受阻")
+        print(f"    修复: 见 knowledge/ssh-keyless-setup.md（ssh-keygen + ssh-copy-id）")
+    if key:
+        print(f"  配置的 ssh_key        : {key} ({'存在' if Path(key).expanduser().exists() else '不存在!'})")
 
     # --- 1. 板端基本信息 + 匹配 ---
     print("\n[1] 板端信息与匹配")
@@ -148,7 +161,7 @@ def cmd_diagnose(args, board_info):
     print(f"  glibc     : {glibc_ver}")
     soc_match = expected_soc.lower() in soc_model.lower()
     arch_ok = (actual_arch == "aarch64" and expected_arch == "aarch64") or \
-              (actual_arch( == "armv7l" and expected_arch == "armhf")
+              (actual_arch == "armv7l" and expected_arch == "armhf")
     if not soc_match:
         print(f"  [!] SoC 不匹配: 期望 {expected_soc}，实际 {soc_model}")
     if not arch_ok:
@@ -168,7 +181,7 @@ def cmd_diagnose(args, board_info):
         if not ok:
             print(f"    影响: {purpose}不可用 → 修复: {fix}")
 
-    # --- 3. 板端工具（基于实测教训）---
+    # --- 3. 板端工具 ---
     print("\n[3] 板端工具")
     tools = [
         ("gcc", "原生编译", "交叉编译替代"),
@@ -193,8 +206,8 @@ def cmd_diagnose(args, board_info):
         ("aarch64-linux-gnu-gcc", "aarch64 交叉编译", "用 Docker 镜像内编译器"),
         ("arm-linux-gnueabihf-gcc", "armhf 交叉编译 (RV1106)", "用 Docker 镜像内编译器"),
         ("docker", "容器化交叉编译", "本机装交叉编译器"),
-        ("sshpass", "非交互 SSH (Linux)", "改用 plink (Windows)"),
-        ("plink", "非交互 SSH (Windows)", "改用 sshpass (Linux)"),
+        ("sshpass", "非交互 SSH (Linux)", "改用 plink (Windows) 或配置免密"),
+        ("plink", "非交互 SSH (Windows)", "改用 sshpass (Linux) 或配置免密"),
     ]
     for tool, purpose, fix in dev_tools:
         ok = bool(shutil.which(tool))
@@ -219,7 +232,7 @@ def cmd_diagnose(args, board_info):
             print("    路径缺失不影响 skill 使用，见 references/official-libs.md 降级方案")
 
     print("\n" + "=" * 64)
-    print("诊断完成。MISSING 项需处理，见对应"影响/降级"说明。")
+    print("诊断完成。MISSING 项需处理，见对应\"影响/降级\"说明。")
     print("=" * 64)
 
 
