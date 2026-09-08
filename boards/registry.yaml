@@ -27,6 +27,7 @@ boards:
 
   rk3568:
     soc: RK3568
+    soc_aliases: [a568, ztl]  # 厂商板型号别名，/proc/device-tree/model 可能返回这些
     arch: aarch64
     ip: 192.168.3.0
     ssh_user: root

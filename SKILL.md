@@ -1,15 +1,15 @@
 ---
 name: "rk3xx-chip-dev"
 description: >-
-  Rockchip RK3XX 系列芯片（RK3566/RK3568/RK3576/RK3588/RV1106）硬件加速开发技能。
+  Rockchip RK3XX 系列芯片（RK3562/RK3566/RK3568/RK3576/RK3588/RV1106）硬件加速开发技能。
   覆盖 MPP 视频硬编解码、RKNN NPU 推理（单核/双核/三核）、RGA 2D 加速（单/双/三实例）、
   VPU JPEG 硬编、DRM/KMS VOP2 显示、DMA-BUF 全链路零拷贝、ffmpeg-rockchip 硬编解码、
-  交叉编译与 glibc 兼容。当用户提到 RK3566/RK3568/RK3576/RK3588/RV1106/RK3XX/Rockchip/
+  交叉编译与 glibc 兼容。当用户提到 RK3562/RK3566/RK3568/RK3576/RK3588/RV1106/RK3XX/Rockchip/
   MPP/RKNN/NPU/RGA/VPU/VOP2/DRM/KMS/DMA-BUF/ION/零拷贝/硬解/硬编/推理模型/rkmpp/rkrga/
   ffmpeg-rockchip/交叉编译/aarch64/armhf/板子部署/SDK sysroot 时激活。
   通用技术（glibc 兼容、环形缓冲 IPC、Go 内存、systemd、安全加固、结构体对齐）见 knowledge/。
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
-version: "2.0.0"
+version: "2.0.1"
 ---
 
 # Rockchip RK3XX 芯片开发技能

@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v2.0.1 (2026-09-08) — 诊断修复版
+
+修复 `diagnose` 子命令实测发现的问题。
+
+### 修复
+- `board_tool.py` diagnose：SoC 匹配误报不匹配。板子 `/proc/device-tree/model` 返回厂商名（如 `ztl, A568`）而非 SoC 名。改为优先读 `/proc/device-tree/compatible`（含 `rockchip,rk3568`），并支持 `soc_aliases` 字段做 model 兜底匹配
+- `.gitignore`：`*.sdk` 通配符误匹配 `docker/Dockerfile.sdk`，导致该文件未被 git 跟踪。移除该模式（`docker/*.tar.gz` + `sdk/` 已覆盖 SDK 文件）
+- `SKILL.md` frontmatter description：补漏 RK3562（板子表已含但描述未列）
+
+### 新增
+- `registry.yaml` rk3568 加 `soc_aliases: [a568, ztl]` 字段
+- `docker/Dockerfile.sdk` 纳入 git 跟踪（此前被 .gitignore 误忽略）
+
 ## v2.0.0 (2026-09-08) — 专业优化版
 
 基于 6 个 Rockchip 官方库真实头文件校准，修复 API 准确性问题，补充关键缺失内容。

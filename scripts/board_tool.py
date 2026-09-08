@@ -155,15 +155,20 @@ def cmd_diagnose(args, board_info):
     print("\n[1] 板端信息与匹配")
     actual_arch = ssh_run("uname -m")
     soc_model = ssh_run("cat /proc/device-tree/model 2>/dev/null")
+    soc_compatible = ssh_run("cat /proc/device-tree/compatible 2>/dev/null | tr '\\0' ' '")
     glibc_ver = ssh_run("ldd --version 2>/dev/null | head -1")
     print(f"  SoC 型号  : {soc_model}")
+    print(f"  compatible: {soc_compatible}")
     print(f"  架构      : {actual_arch} (期望 {expected_arch})")
     print(f"  glibc     : {glibc_ver}")
-    soc_match = expected_soc.lower() in soc_model.lower()
+    soc_aliases = board_info.get("soc_aliases", [])
+    match_targets = [expected_soc.lower()] + [a.lower() for a in soc_aliases]
+    soc_match = any(t in soc_compatible.lower() for t in match_targets) or \
+                any(t in soc_model.lower() for t in match_targets)
     arch_ok = (actual_arch == "aarch64" and expected_arch == "aarch64") or \
               (actual_arch == "armv7l" and expected_arch == "armhf")
     if not soc_match:
-        print(f"  [!] SoC 不匹配: 期望 {expected_soc}，实际 {soc_model}")
+        print(f"  [!] SoC 不匹配: 期望 {expected_soc}，实际 model={soc_model} compatible={soc_compatible}")
     if not arch_ok:
         print(f"  [!] 架构不匹配: 期望 {expected_arch}，实际 {actual_arch}")
 

@@ -1,0 +1,38 @@
+# Dockerfile.sdk — Adds RK SDK sysroot on top of base toolchain.
+# Mount or COPY your RK SDK (rknpu2 + mpp + rga + rockit) into /opt/rk-sdk.
+# The SDK is board-specific (aarch64 vs armhf), so build per-arch.
+#
+# Build:
+#   docker build -f Dockerfile.sdk -t rk-sdk:aarch64 \
+#     --build-arg ARCH=aarch64 --build-arg GCC_PREFIX=aarch64-linux-gnu \
+#     --build-arg SDK_TARBALL=rk3576-sdk-aarch64.tar.gz .
+
+FROM rk-base:aarch64 AS sdk
+
+ARG ARCH=aarch64
+ARG GCC_PREFIX=aarch64-linux-gnu
+ARG SDK_TARBALL
+
+ENV RK_SDK_PATH=/opt/rk-sdk
+
+# Copy SDK tarball (must exist in build context)
+COPY ${SDK_TARBALL} /tmp/sdk.tar.gz
+RUN mkdir -p ${RK_SDK_PATH} && \
+    tar -xzf /tmp/sdk.tar.gz -C ${RK_SDK_PATH} --strip-components=1 && \
+    rm /tmp/sdk.tar.gz
+
+# Verify expected libs exist (fail fast at build time)
+RUN set -e; \
+    for lib in librockchip_mpp.so librga.so; do \
+      find ${RK_SDK_PATH} -name "$lib" | head -1 | grep -q . || \
+      echo "WARN: $lib not found in SDK"; \
+    done; \
+    if [ "$ARCH" = "armhf" ]; then \
+      find ${RK_SDK_PATH} -name "librknnmrt.so" | head -1 | grep -q . || \
+      echo "WARN: librknnmrt.so not found (required for armhf/RV1106)"; \
+    else \
+      find ${RK_SDK_PATH} -name "librknnrt.so" | head -1 | grep -q . || \
+      echo "WARN: librknnrt.so not found"; \
+    fi
+
+WORKDIR /work

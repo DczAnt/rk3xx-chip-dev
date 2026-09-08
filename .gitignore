@@ -9,7 +9,7 @@ build-out/
 docker/*.tar.gz
 docker/*.tar.xz
 sdk/
-*.sdk
+
 
 # Python
 __pycache__/
