@@ -1,7 +1,7 @@
 #!/bin/bash
 # 板子自动探测脚本：SSH 连入后识别 SoC 型号 + 能力，输出 boards/registry.yaml 片段
 # 用法: bash boards/probe.sh <ip> [user] [password]
-#   bash boards/probe.sh 192.168.3.208 root 123456
+#   bash boards/probe.sh 192.168.1.100 root <password>
 set -e
 
 IP=${1:?Usage: probe.sh <ip> [user] [password]}
